@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 
 namespace SeaStrikeClient
@@ -12,39 +13,67 @@ namespace SeaStrikeClient
             InitializeComponent();
         }
 
-        private void btnJoin_Click(object sender, RoutedEventArgs e)
+        private async void btnJoin_Click(object sender, RoutedEventArgs e)
         {
-            string serverIp = "127.0.0.1"; // Szerver IP-címe
-            int port = 12345; // Szerver portja
-
             try
             {
-                using (TcpClient client = new TcpClient())
+                // Kliens csatlakozása a szerverhez
+                TcpClient client = new TcpClient("127.0.0.1", 5000); // IP-cím és port
+                NetworkStream stream = client.GetStream();
+
+                // Csatlakozási üzenet küldése
+                byte[] data = Encoding.UTF8.GetBytes("join");
+                await stream.WriteAsync(data, 0, data.Length);
+
+                // Válasz fogadása
+                byte[] buffer = new byte[1024];
+                int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+                string response = Encoding.UTF8.GetString(buffer, 0, bytesRead).Trim();
+
+                Dispatcher.Invoke(() =>
                 {
-                    client.Connect(serverIp, port); // Kapcsolódás a szerverhez
-                    NetworkStream stream = client.GetStream();
+                    MessageBox.Show($"Szerver válasza: {response}");
+                });
 
-                    // Üzenet küldése
-                    string message = "Hello, Server! This is the client.";
-                    byte[] data = Encoding.UTF8.GetBytes(message);
-                    stream.Write(data, 0, data.Length);
-                    MessageBox.Show("Kapcsolódás sikeres és üzenet elküldve a szervernek!");
+                if (response == "ok")
+                {
+                    // Várakozás az "isactive" üzenetre
+                    while (true)
+                    {
+                        bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+                        response = Encoding.UTF8.GetString(buffer, 0, bytesRead).Trim();
 
-                    // Válasz fogadása
-                    byte[] buffer = new byte[1024];
-                    int bytesRead = stream.Read(buffer, 0, buffer.Length);
-                    string response = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-
-                    MessageBox.Show($"Válasz a szervertől: {response}");
+                        if (response == "isactive")
+                        {
+                            // Aktív státusz visszaküldése
+                            data = Encoding.UTF8.GetBytes("active");
+                            await stream.WriteAsync(data, 0, data.Length);
+                        }
+                        else if (response == "start")
+                        {
+                            // Játék indítása, üzenet megjelenítése
+                            Dispatcher.Invoke(() =>
+                            {
+                                MessageBox.Show("A játék elkezdődött!");
+                            });
+                            break;
+                        }
+                    }
                 }
-            }
-            catch (SocketException ex)
-            {
-                MessageBox.Show($"Nem sikerült csatlakozni a szerverhez: {ex.Message}");
+                else if (response == "Server full")
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        MessageBox.Show("A szerver tele van, nem tudsz csatlakozni.");
+                    });
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Hiba történt: {ex.Message}");
+                Dispatcher.Invoke(() =>
+                {
+                    MessageBox.Show($"Hiba történt: {ex.Message}");
+                });
             }
         }
     }
