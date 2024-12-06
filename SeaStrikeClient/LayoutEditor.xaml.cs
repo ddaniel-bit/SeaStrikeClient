@@ -1,8 +1,9 @@
-﻿using System;
+﻿using System.Linq;
 using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Media;
 
 namespace SeaStrikeClient
 {
@@ -10,6 +11,7 @@ namespace SeaStrikeClient
     {
         private readonly TcpClient _client;
         private readonly NetworkStream _stream;
+        private int[,] _gridMatrix;
 
         public LayoutEditor(TcpClient client, NetworkStream stream)
         {
@@ -17,51 +19,70 @@ namespace SeaStrikeClient
             _client = client;
             _stream = stream;
 
-            // Indítsd el a kommunikáció fogadását az új ablakban
-            _ = Task.Run(ReceiveMessagesAsync);
+            InitializeMatrix();
         }
 
-        private async Task ReceiveMessagesAsync()
+        // Mátrix inicializálása
+        private void InitializeMatrix()
         {
-            try
-            {
-                byte[] buffer = new byte[1024];
+            int rows = 10; // A gombok elrendezésének sorai
+            int cols = 10; // A gombok elrendezésének oszlopai
+            _gridMatrix = new int[rows, cols];
+        }
 
-                while (_client.Connected)
+        // Gombkattintás eseménykezelő
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button clickedButton)
+            {
+                // Gomb színének váltása
+                if (clickedButton.Background == Brushes.White)
                 {
-                    int bytesRead = await _stream.ReadAsync(buffer, 0, buffer.Length);
-                    if (bytesRead > 0)
-                    {
-                        string response = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                        Dispatcher.Invoke(() => MessageBox.Show($"Válasz a szervertől: {response}"));
-                    }
+                    clickedButton.Background = Brushes.Gray; // Hajó elhelyezése
+                }
+                else
+                {
+                    clickedButton.Background = Brushes.White; // Hajó eltávolítása
+                }
+
+                // Pozíció meghatározása
+                var parentGrid = VisualTreeHelper.GetParent(clickedButton) as UniformGrid;
+                if (parentGrid != null)
+                {
+                    int index = parentGrid.Children.IndexOf(clickedButton);
+                    int row = index / parentGrid.Columns; // Sor index
+                    int col = index % parentGrid.Columns; // Oszlop index
+
+                    // Mátrix frissítése
+                    _gridMatrix[row, col] = clickedButton.Background == Brushes.Gray ? 1 : 0;
                 }
             }
-            catch (Exception ex)
-            {
-                Dispatcher.Invoke(() => MessageBox.Show($"Hiba a válasz fogadása közben: {ex.Message}"));
-            }
         }
 
-        private async void btnSendMessage_Click(object sender, RoutedEventArgs e)
+        // Mátrix exportálása a "Befejezés" gombnál
+        private void FinishButton_Click(object sender, RoutedEventArgs e)
         {
-            try
-            {
-                string message = "example_message";
-                byte[] messageBytes = Encoding.UTF8.GetBytes(message);
-                await _stream.WriteAsync(messageBytes, 0, messageBytes.Length);
-                MessageBox.Show("Üzenet elküldve a szervernek.");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Hiba üzenet küldése közben: {ex.Message}");
-            }
+            // Mátrix állapotának ellenőrzése
+            MessageBox.Show("2D Mátrix állapota:\n" + MatrixToString(_gridMatrix));
         }
 
-        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        // Segédmetódus a mátrix karakterláncként való megjelenítéséhez
+        private string MatrixToString(int[,] matrix)
         {
-            _stream?.Close();
-            _client?.Close();
+            int rows = matrix.GetLength(0);
+            int cols = matrix.GetLength(1);
+            string result = "";
+
+            for (int i = 0; i < rows; i++)
+            {
+                for (int j = 0; j < cols; j++)
+                {
+                    result += matrix[i, j] + " ";
+                }
+                result += "\n";
+            }
+
+            return result;
         }
     }
 }
