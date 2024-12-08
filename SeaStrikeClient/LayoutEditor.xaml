@@ -117,6 +117,7 @@
         </UniformGrid>
 
         <!-- Befejezés gomb -->
-        <Button Content="Befejezés" Grid.Row="1" Margin="10" Padding="10" Click="FinishButton_Click"/>
+        <Button Content="Befejezés" Grid.Row="1" Margin="10" Padding="10" Click="FinishButton_Click" x:Name="btnStart"/>
+        <Label Content="Várakozás a másik játékosra..." Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" x:Name="lblWaiting"/>
     </Grid>
 </Window>
