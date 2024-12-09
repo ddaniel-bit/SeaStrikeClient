@@ -70,7 +70,7 @@ namespace SeaStrikeClient
                     {
                         Dispatcher.Invoke(() =>
                         {
-                            LayoutEditor layoutEditor = new LayoutEditor(_client, _stream);
+                            LayoutEditortemp layoutEditor = new LayoutEditortemp(_client, _stream);
                             layoutEditor.Show();
                             this.Close(); // Bezárja a főablakot
                         });
